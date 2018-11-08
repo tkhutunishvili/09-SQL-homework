@@ -47,7 +47,10 @@ WHERE
 -- 3a. You want to keep a description of each actor. You don't think you will be performing queries on a description, so create a column in the table actor named description and use the data type BLOB (Make sure to research the type BLOB, as the difference between it and VARCHAR are significant).
 
 ALTER TABLE actor ADD description BLOB;
-select * from actor;
+SELECT 
+    *
+FROM
+    actor;
 
 -- 3b. Very quickly you realize that entering descriptions for each actor is too much effort. Delete the description column.
 ALTER TABLE actor DROP description;
@@ -60,6 +63,12 @@ FROM
 GROUP BY last_name;
 
 -- 4b. List last names of actors and the number of actors who have that last name, but only for names that are shared by at least two actors
+SELECT 
+    last_name, COUNT(last_name) AS last_name_count
+FROM
+    actor
+GROUP BY last_name
+HAVING last_name_count > 1;
 
 -- 4c. The actor HARPO WILLIAMS was accidentally entered in the actor table as GROUCHO WILLIAMS. Write a query to fix the record.
 UPDATE actor 
@@ -127,12 +136,11 @@ FROM
     customer c
         INNER JOIN
     payment p ON c.customer_id = p.customer_id
-GROUP BY first_name,last_name
+GROUP BY first_name , last_name
 ORDER BY last_name;
 
 -- 7a. The music of Queen and Kris Kristofferson have seen an unlikely resurgence. As an unintended consequence, films starting with the letters K and Q have also soared in popularity. 
 -- Use subqueries to display the titles of movies starting with the letters K and Q whose language is English.
-
 SELECT 
     title,
     (SELECT 
@@ -140,62 +148,138 @@ SELECT
         FROM
             language
         WHERE
-            film.language_id = language.language_id) as 'Language'
-FROM 
+            film.language_id = language.language_id) AS 'Language'
+FROM
     film
 WHERE
     title LIKE 'K%' OR title LIKE 'Q%';
 
 -- 7b. Use subqueries to display all actors who appear in the film Alone Trip.
-select first_name,last_name from actor where actor_id in
-(
-select actor_id from film_actor where film_id in
-(select film_id from film where title = 'Alone Trip')
-);
+SELECT 
+    first_name, last_name
+FROM
+    actor
+WHERE
+    actor_id IN (SELECT 
+            actor_id
+        FROM
+            film_actor
+        WHERE
+            film_id IN (SELECT 
+                    film_id
+                FROM
+                    film
+                WHERE
+                    title = 'Alone Trip'));
 
 -- 7c. You want to run an email marketing campaign in Canada, for which you will need the names and email addresses of all Canadian customers. Use joins to retrieve this information.
-select c.first_name, c.last_name, c.email 
-from customer c
-inner join address a on a.address_id = c.address_id
-inner join city ct on ct.city_id = a.city_id
-inner join country cr on cr.country_id = ct.country_id where cr.country='canada';
+SELECT 
+    c.first_name, c.last_name, c.email
+FROM
+    customer c
+        INNER JOIN
+    address a ON a.address_id = c.address_id
+        INNER JOIN
+    city ct ON ct.city_id = a.city_id
+        INNER JOIN
+    country cr ON cr.country_id = ct.country_id
+WHERE
+    cr.country = 'canada';
 
 -- 7d. Sales have been lagging among young families, and you wish to target all family movies for a promotion. Identify all movies categorized as family films.
-select title from film where film_id in
-(
-select film_id from film_category where category_id in
-(select category_id from category where name='Family')
-);
+SELECT 
+    title
+FROM
+    film
+WHERE
+    film_id IN (SELECT 
+            film_id
+        FROM
+            film_category
+        WHERE
+            category_id IN (SELECT 
+                    category_id
+                FROM
+                    category
+                WHERE
+                    name = 'Family'));
 
 -- 7e. Display the most frequently rented movies in descending order.
-select f.title, r.rental_date from film f
-inner join inventory i on i.film_id=f.film_id
-inner join rental r on r.inventory_id=i.inventory_id
-order by rental_date desc;
+SELECT 
+    f.title, r.rental_date
+FROM
+    film f
+        INNER JOIN
+    inventory i ON i.film_id = f.film_id
+        INNER JOIN
+    rental r ON r.inventory_id = i.inventory_id
+ORDER BY rental_date DESC;
 
 -- 7f. Write a query to display how much business, in dollars, each store brought in.
-select sum(p.amount) as 'Total Amount', i.store_id from payment p
-inner join rental r on r.rental_id=p.rental_id
-inner join inventory i on i.inventory_id=r.inventory_id
-group by i.store_id;
+SELECT 
+    SUM(p.amount) AS 'Total Amount', i.store_id
+FROM
+    payment p
+        INNER JOIN
+    rental r ON r.rental_id = p.rental_id
+        INNER JOIN
+    inventory i ON i.inventory_id = r.inventory_id
+GROUP BY i.store_id;
 
 -- 7g. Write a query to display for each store its store ID, city, and country.
-select s.store_id, ct.city,  cr.country from country cr
-inner join city ct on ct.country_id=cr.country_id
-inner join address a on a.city_id=ct.city_id
-inner join store s on s.address_id=a.address_id;
+SELECT 
+    s.store_id, ct.city, cr.country
+FROM
+    country cr
+        INNER JOIN
+    city ct ON ct.country_id = cr.country_id
+        INNER JOIN
+    address a ON a.city_id = ct.city_id
+        INNER JOIN
+    store s ON s.address_id = a.address_id;
 
 -- 7h. List the top five genres in gross revenue in descending order. (Hint: you may need to use the following tables: category, film_category, inventory, payment, and rental.)
-select c.name, sum(p.amount) as 'Total' from category c 
-inner join film_category f on f.category_id=c.category_id
-inner join inventory i on i.film_id=f.film_id
-inner join rental r on r.inventory_id=i.inventory_id
-inner join payment p on p.rental_id=r.rental_id
-group by name 
-order by Total desc;
+SELECT 
+    c.name, SUM(p.amount) AS 'Total'
+FROM
+    category c
+        INNER JOIN
+    film_category f ON f.category_id = c.category_id
+        INNER JOIN
+    inventory i ON i.film_id = f.film_id
+        INNER JOIN
+    rental r ON r.inventory_id = i.inventory_id
+        INNER JOIN
+    payment p ON p.rental_id = r.rental_id
+GROUP BY name
+ORDER BY Total DESC
+LIMIT 5;
 
--- 8a. In your new role as an executive, you would like to have an easy way of viewing the Top five genres by gross revenue. Use the solution from the problem above to create a view. If you haven't solved 7h, you can substitute another query to create a view.
+-- 8a. In your new role as an executive, you would like to have an easy way of viewing the Top five genres by gross revenue. Use the solution from the problem above 
+-- to create a view. If you haven't solved 7h, you can substitute another query to create a view.
+CREATE VIEW top_five_genres AS
+    SELECT 
+        c.name, SUM(p.amount) AS 'Total'
+    FROM
+        category c
+            INNER JOIN
+        film_category f ON f.category_id = c.category_id
+            INNER JOIN
+        inventory i ON i.film_id = f.film_id
+            INNER JOIN
+        rental r ON r.inventory_id = i.inventory_id
+            INNER JOIN
+        payment p ON p.rental_id = r.rental_id
+    GROUP BY name
+    ORDER BY Total DESC
+    LIMIT 5;
+
 -- 8b. How would you display the view that you created in 8a?
+SELECT 
+    *
+FROM
+    top_five_genres;
 -- 8c. You find that you no longer need the view top_five_genres. Write a query to delete it.
+drop view top_five_genres;
 
 
